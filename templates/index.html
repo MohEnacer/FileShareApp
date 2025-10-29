@@ -1,0 +1,79 @@
+<!-- templates/index.html -->
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<title>FileShareApp</title>
+<style>
+  body{font-family:Arial; background:#f6f6f6; padding:20px;}
+  .box{width:760px; margin:0 auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+  h1{margin-top:0}
+  .devices a{display:block; margin:6px 0; color:#0a66c2; text-decoration:none;}
+  .muted{color:#666}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>مشاركة ملفات — {{ local_ip }}:{{ port }}</h1>
+  <h3>ارسال ملف إلى جهاز:</h3>
+  <form id="sendForm">
+    <label>اختر جهاز:
+      <select id="deviceSelect">
+        <option value="">-- اختر --</option>
+        {% for d in devices %}
+          <option value="{{ d.ip }}:{{ d.port }}">{{ d.name }} — {{ d.ip }}:{{ d.port }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>اختر ملف:
+      <input type="file" id="fileInput" required>
+    </label>
+    <button type="submit">إرسال</button>
+  </form>
+  <div id="result"></div>
+
+  <hr>
+  <h3>الملفات المحلية:</h3>
+  <ul>
+    {% for f in files %}
+      <li><a href="/files/{{ f }}">{{ f }}</a></li>
+    {% else %}
+      <li class="muted">لا توجد ملفات</li>
+    {% endfor %}
+  </ul>
+
+  <hr>
+  <h3>الأجهزة المكتشفة:</h3>
+  <div class="devices">
+    {% for d in devices %}
+      <a href="http://{{ d.ip }}:{{ d.port }}" target="_blank">{{ d.name }} — {{ d.ip }}:{{ d.port }}</a>
+    {% else %}
+      <div class="muted">لا توجد أجهزة</div>
+    {% endfor %}
+  </div>
+  <p class="muted">تأكد من فتح المنفذ في جدار الحماية إن لم تظهر الأجهزة.</p>
+</div>
+
+<script>
+document.getElementById("sendForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const sel = document.getElementById("deviceSelect");
+  const fileIn = document.getElementById("fileInput");
+  const result = document.getElementById("result");
+  if(!sel.value){ result.innerText = "اختر جهازاً"; return; }
+  if(!fileIn.files.length){ result.innerText = "اختر ملفاً"; return; }
+  const [ip, port] = sel.value.split(":");
+  const url = `http://${ip}:${port}/receive`;
+  const fd = new FormData();
+  fd.append("file", fileIn.files[0]);
+  result.innerText = "جاري الإرسال...";
+  try{
+    const r = await fetch(url, {method:"POST", body: fd});
+    const txt = await r.text();
+    if(r.ok) result.innerText = "نجح: " + txt;
+    else result.innerText = "فشل: " + txt;
+  }catch(err){ result.innerText = "خطأ اتصال: " + err.message; }
+});
+</script>
+</body>
+</html>
